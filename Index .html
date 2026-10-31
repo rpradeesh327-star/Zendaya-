@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pradeesh Gallery</title>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: Arial, sans-serif;
+    background: #f8f8f8;
+    color: #222;
+}
+
+header {
+    padding: 20px 5%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+.logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #e60023;
+}
+
+button {
+    border: none;
+    padding: 12px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+.upload-btn {
+    background: #e60023;
+    color: white;
+}
+
+.search {
+    padding: 13px;
+    width: 35%;
+    border: none;
+    background: #eee;
+    border-radius: 25px;
+    outline: none;
+}
+
+h2 {
+    text-align: center;
+    margin: 30px 0;
+}
+
+.gallery {
+    columns: 4 200px;
+    column-gap: 15px;
+    padding: 20px;
+}
+
+.card {
+    break-inside: avoid;
+    margin-bottom: 18px;
+    background: white;
+    border-radius: 15px;
+    overflow: hidden;
+    box-shadow: 0 3px 10px #ddd;
+}
+
+.card img {
+    width: 100%;
+    display: block;
+    cursor: pointer;
+}
+
+.card-info {
+    padding: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.fav {
+    color: #e60023;
+    font-size: 20px;
+}
+
+.delete {
+    background: #eee;
+    padding: 7px 10px;
+}
+
+#viewer {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000e;
+    z-index: 20;
+    justify-content: center;
+    align-items: center;
+}
+
+#viewer img {
+    max-width: 90%;
+    max-height: 85%;
+    object-fit: contain;
+}
+
+#viewer button {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+}
+
+footer {
+    text-align: center;
+    padding: 30px;
+    color: #777;
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <div class="logo">📌 PRADEESH</div>
+
+    <input
+        class="search"
+        id="search"
+        placeholder="Search images..."
+        oninput="showImages()"
+    >
+
+    <button class="upload-btn"
+    onclick="document.getElementById('file').click()">
+        + Upload
+    </button>
+
+    <input type="file" id="file"
+    accept="image/*" multiple hidden>
+</header>
+
+<h2>Discover Beautiful Images ✨</h2>
+
+<div class="gallery" id="gallery"></div>
+
+<div id="viewer" onclick="closeViewer()">
+    <button>✕ Close</button>
+    <img id="bigImage">
+</div>
+
+<footer>
+    © 2026 Pradeesh Gallery | Created with ❤️
+</footer>
+
+<script>
+
+let images = JSON.parse(
+    localStorage.getItem("myGallery") || "[]"
+);
+
+let favourites = JSON.parse(
+    localStorage.getItem("myFavourites") || "[]"
+);
+
+function save() {
+    localStorage.setItem("myGallery", JSON.stringify(images));
+    localStorage.setItem("myFavourites", JSON.stringify(favourites));
+}
+
+document.getElementById("file").addEventListener("change",
+function(event) {
+
+    const files = Array.from(event.target.files);
+
+    files.forEach(file => {
+
+        if (!file.type.startsWith("image/")) return;
+
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+
+            images.unshift({
+                id: Date.now() + Math.random(),
+                name: file.name,
+                src: e.target.result
+            });
+
+            try {
+                save();
+                showImages();
+            } catch(error) {
+                alert("Storage full! Try smaller images.");
+                images.shift();
+            }
+        };
+
+        reader.readAsDataURL(file);
+    });
+
+    event.target.value = "";
+});
+
+function showImages() {
+
+    const gallery = document.getElementById("gallery");
+    const search = document.getElementById("search").value.toLowerCase();
+
+    gallery.innerHTML = "";
+
+    images.filter(img =>
+        img.name.toLowerCase().includes(search)
+    ).forEach(img => {
+
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const image = document.createElement("img");
+        image.src = img.src;
+        image.alt = img.name;
+        image.onclick = () => openViewer(img.src);
+
+        const info = document.createElement("div");
+        info.className = "card-info";
+
+        const name = document.createElement("span");
+        name.textContent = img.name;
+
+        const fav = document.createElement("button");
+        fav.className = "fav";
+        fav.textContent = favourites.includes(img.id) ? "♥" : "♡";
+
+        fav.onclick = () => toggleFav(img.id);
+
+        const del = document.createElement("button");
+        del.className = "delete";
+        del.textContent = "Delete";
+
+        del.onclick = () => deleteImage(img.id);
+
+        info.append(name, fav, del);
+        card.append(image, info);
+        gallery.appendChild(card);
+    });
+}
+
+function toggleFav(id) {
+
+    if (favourites.includes(id)) {
+        favourites = favourites.filter(x => x !== id);
+    } else {
+        favourites.push(id);
+    }
+
+    save();
+    showImages();
+}
+
+function deleteImage(id) {
+
+    if (confirm("Delete this image?")) {
+
+        images = images.filter(img => img.id !== id);
+        favourites = favourites.filter(x => x !== id);
+
+        save();
+        showImages();
+    }
+}
+
+function openViewer(src) {
+    document.getElementById("bigImage").src = src;
+    document.getElementById("viewer").style.display = "flex";
+}
+
+function closeViewer() {
+    document.getElementById("viewer").style.display = "none";
+}
+
+showImages();
+
+</script>
+
+</body>
+</html>
